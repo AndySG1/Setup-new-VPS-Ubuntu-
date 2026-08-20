@@ -8,19 +8,36 @@
 ssh root@ВАШ_IP
 ```
 
-Загрузите скрипт на сервер (например, через `scp` со своего компьютера):
+Скрипт лежит в репозитории на GitHub:
+https://github.com/AndySG1/Setup-new-VPS-Ubuntu-/blob/main/setup-vps.sh
+
+Самый простой способ — скачать его прямо на сервере через `git clone` или `curl`.
+
+**Вариант A — git clone (если репозиторий публичный):**
+
+```bash
+apt update && apt install -y git   # git может отсутствовать на свежем образе
+git clone https://github.com/AndySG1/Setup-new-VPS-Ubuntu-.git
+cd Setup-new-VPS-Ubuntu-
+```
+
+**Вариант B — скачать только файл скрипта через curl:**
+
+```bash
+curl -O https://raw.githubusercontent.com/AndySG1/Setup-new-VPS-Ubuntu-/main/setup-vps.sh
+```
+
+Если репозиторий приватный, `git clone`/`curl` по HTTPS без авторизации не сработают — тогда проще скопировать скрипт со своего компьютера через `scp`:
 
 ```bash
 scp setup-vps.sh root@ВАШ_IP:/root/
 ```
 
-или скопируйте содержимое файла напрямую на сервере через `nano setup-vps.sh`.
-
 ## 2. Проверьте настройки в начале скрипта
 
 Откройте `setup-vps.sh` и при желании поменяйте:
 
-- `NEW_USER` — имя нового администратора (по умолчанию `andy`);
+- `NEW_USER` — имя нового администратора (по умолчанию `deploy`);
 - `SSH_PORT` — можно оставить 22 или сменить на нестандартный (рекомендуется, но не обязательно);
 - `ALLOWED_TCP_PORTS` — какие порты открыть кроме SSH (по умолчанию 80 и 443);
 - `TIMEZONE` — часовой пояс сервера.
