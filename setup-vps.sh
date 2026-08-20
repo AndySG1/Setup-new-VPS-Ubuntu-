@@ -10,23 +10,75 @@
 #   chmod +x setup-vps.sh
 #   sudo ./setup-vps.sh
 #
+# Имя пользователя и SSH-порт можно задать тремя способами (по приоритету):
+#   1) флагами:        sudo ./setup-vps.sh -u alex -p 2222
+#   2) переменными:    sudo NEW_USER=alex SSH_PORT=2222 ./setup-vps.sh
+#   3) интерактивно:   если флаги/переменные не заданы, а скрипт запущен
+#                       в обычном терминале — он сам спросит значения
+#                       (Enter — оставить значение по умолчанию)
+#
 set -euo pipefail
 
 ### ─────────────────────────── НАСТРОЙКИ ─────────────────────────── ###
 
-NEW_USER="andy"             # имя нового администратора (не root)
-SSH_PORT="22"               # порт SSH (можно поменять на нестандартный)
-ALLOWED_TCP_PORTS=(80 443)  # какие ещё порты открыть, кроме SSH
-TIMEZONE="Europe/Helsinki"  # часовой пояс сервера
-ENABLE_SWAP="yes"           # создать swap-файл, если его нет
+NEW_USER="${NEW_USER:-andy}"    # имя нового администратора (не root)
+SSH_PORT="${SSH_PORT:-23542}"   # порт SSH (можно поменять на нестандартный)
+ALLOWED_TCP_PORTS=(80 443)      # какие ещё порты открыть, кроме SSH
+TIMEZONE="Europe/Helsinki"      # часовой пояс сервера
+ENABLE_SWAP="yes"               # создать swap-файл, если его нет
 SWAP_SIZE="2G"
 
 ### ──────────────────────────────────────────────────────────────── ###
+
+usage() {
+  cat <<EOF
+Использование: sudo ./setup-vps.sh [-u ИМЯ_ПОЛЬЗОВАТЕЛЯ] [-p SSH_ПОРТ]
+
+  -u, --user   имя нового администратора (по умолчанию: deploy)
+  -p, --port   порт SSH (по умолчанию: 22)
+  -y, --yes    не спрашивать интерактивно, использовать значения как есть
+  -h, --help   показать эту справку
+EOF
+}
+
+SKIP_PROMPT="no"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -u|--user) NEW_USER="$2"; shift 2 ;;
+    -p|--port) SSH_PORT="$2"; shift 2 ;;
+    -y|--yes)  SKIP_PROMPT="yes"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Неизвестный параметр: $1"; usage; exit 1 ;;
+  esac
+done
 
 if [[ $EUID -ne 0 ]]; then
   echo "Запустите скрипт от root (sudo ./setup-vps.sh)"
   exit 1
 fi
+
+# Если значения не переданы флагами/переменными и запуск интерактивный —
+# спросить их у пользователя. Флаг -y/--yes или запуск не в терминале
+# (например, через pipe) пропускает вопросы и берёт текущие значения.
+if [[ "$SKIP_PROMPT" == "no" && -t 0 ]]; then
+  read -rp "Имя нового пользователя [$NEW_USER]: " input_user
+  NEW_USER="${input_user:-$NEW_USER}"
+
+  read -rp "Порт SSH [$SSH_PORT]: " input_port
+  SSH_PORT="${input_port:-$SSH_PORT}"
+fi
+
+# Простая валидация
+if ! [[ "$NEW_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+  echo "Некорректное имя пользователя: $NEW_USER"
+  exit 1
+fi
+if ! [[ "$SSH_PORT" =~ ^[0-9]+$ ]] || (( SSH_PORT < 1 || SSH_PORT > 65535 )); then
+  echo "Некорректный порт SSH: $SSH_PORT"
+  exit 1
+fi
+
+echo "Пользователь: $NEW_USER | SSH-порт: $SSH_PORT"
 
 echo "==> 1/9. Обновление системы"
 export DEBIAN_FRONTEND=noninteractive
